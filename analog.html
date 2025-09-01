@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Upgraded Analog Clock</title>
+  <style>
+    :root{
+      --bg:#f3f6fb;
+      --card:#fff;
+      --accent:#1f2937;
+      --muted:#6b7280;
+      --tick:#111827;
+    }
+    [data-theme="dark"]{
+      --bg:#0f1724;
+      --card:#0b1220;
+      --accent:#f8fafc;
+      --muted:#9ca3af;
+      --tick:#e6eef9;
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-family:Inter,ui-sans-serif,system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background:linear-gradient(180deg,var(--bg), #dbeafe);
+      color:var(--accent);
+      padding:24px;
+    }
+
+    .card{
+      width:360px;
+      max-width:95vw;
+      background:var(--card);
+      border-radius:16px;
+      box-shadow:0 10px 30px rgba(2,6,23,0.15);
+      padding:18px;
+      text-align:center;
+    }
+
+    .controls{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      justify-content:center;
+      margin-bottom:12px;
+      align-items:center;
+    }
+    select,input[type="time"],button,label{
+      font-size:14px;
+      padding:8px;
+      border-radius:8px;
+      border:1px solid rgba(0,0,0,0.06);
+      background:transparent;
+      color:var(--accent);
+    }
+    .controls button{
+      cursor:pointer;
+      background:var(--accent);
+      color:white;
+      border:none;
+    }
+    .row{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:center;
+      margin-bottom:12px;
+      flex-wrap:wrap;
+    }
+
+    /* CLOCK */
+    .clock-wrap{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:relative;
+      margin: 10px auto 6px;
+      width:260px;
+      height:260px;
+    }
+    .clock {
+      width:100%;
+      height:100%;
+      border-radius:50%;
+      background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.6), transparent 15%),
+                  linear-gradient(180deg, rgba(255,255,255,0.04), transparent 30%);
+      border:8px solid rgba(0,0,0,0.06);
+      position:relative;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.03);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    /* ticks */
+    .tick {
+      position:absolute;
+      width:2px;
+      height:10px;
+      background:var(--tick);
+      top:10px;
+      left:50%;
+      transform-origin:center 120px;
+      opacity:0.85;
+    }
+    .tick.hour {
+      height:18px;
+      width:3px;
+      top:6px;
+    }
+
+    /* numbers */
+    .number {
+      position:absolute;
+      font-weight:600;
+      transform:translate(-50%,-50%);
+      color:var(--muted);
+    }
+
+    /* hands */
+    .hand {
+      position:absolute;
+      left:50%;
+      top:50%;
+      transform-origin:50% 95%;
+      transform:translate(-50%,-100%) rotate(0deg);
+      border-radius:6px;
+    }
+    .hand.hour {
+      height:65px;
+      width:7px;
+      background:var(--accent);
+      z-index:5;
+    }
+    .hand.minute {
+      height:95px;
+      width:5px;
+      background:var(--accent);
+      z-index:6;
+    }
+    .hand.second {
+      height:110px;
+      width:2px;
+      background:#e11d48;
+      z-index:7;
+    }
+    .center-dot {
+      position:absolute;
+      width:12px;
+      height:12px;
+      background:var(--accent);
+      border-radius:50%;
+      z-index:10;
+      left:50%;
+      top:50%;
+      transform:translate(-50%,-50%);
+      box-shadow:0 2px 6px rgba(0,0,0,0.15);
+    }
+
+    .digital {
+      margin-top:10px;
+      font-size:18px;
+      font-weight:600;
+      color:var(--accent);
+    }
+    .small {
+      font-size:13px;
+      color:var(--muted);
+      margin-top:6px;
+    }
+
+    .footer {
+      margin-top:12px;
+      display:flex;
+      gap:8px;
+      justify-content:center;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    /* alarm UI */
+    .alarm {
+      display:flex;
+      gap:6px;
+      align-items:center;
+      justify-content:center;
+    }
+    .muted{
+      color:var(--muted);
+    }
+
+    /* responsive */
+    @media (max-width:420px){
+      .clock-wrap{width:220px;height:220px}
+      .hand.hour{height:55px}
+      .hand.minute{height:80px}
+      .hand.second{height:92px}
+    }
+  </style>
+</head>
+<body>
+  <div class="card" id="app">
+    <div class="controls">
+      <label>
+        Timezone:
+        <select id="tz">
+          <option value="local">Local</option>
+          <option value="UTC">UTC</option>
+          <option value="Asia/Kolkata">Asia/Kolkata</option>
+          <option value="Europe/London">Europe/London</option>
+          <option value="America/New_York">America/New_York</option>
+        </select>
+      </label>
+
+      <label>
+        <input type="checkbox" id="showNumbers" checked> Show numbers
+      </label>
+
+      <button id="themeBtn">Toggle Dark</button>
+    </div>
+
+    <div class="clock-wrap" aria-label="Analog clock">
+      <div class="clock" id="clockFace">
+        <!-- ticks and numbers generated by JS -->
+        <div class="hand hour" id="hourHand"></div>
+        <div class="hand minute" id="minuteHand"></div>
+        <div class="hand second" id="secondHand"></div>
+        <div class="center-dot"></div>
+      </div>
+    </div>
+
+    <div class="digital" id="digital">--:--:--</div>
+    <div class="small muted" id="tzLabel">Timezone: Local</div>
+
+    <div class="footer">
+      <div class="alarm">
+        <label class="muted">Alarm</label>
+        <input type="time" id="alarmTime" />
+        <button id="setAlarmBtn">Set</button>
+        <button id="clearAlarmBtn">Clear</button>
+      </div>
+
+      <div class="muted" id="alarmStatus">No alarm</div>
+    </div>
+  </div>
+
+  <script>
+    // Elements
+    const hourHand = document.getElementById('hourHand');
+    const minuteHand = document.getElementById('minuteHand');
+    const secondHand = document.getElementById('secondHand');
+    const digital = document.getElementById('digital');
+    const tzSelect = document.getElementById('tz');
+    const tzLabel = document.getElementById('tzLabel');
+    const showNumbersChk = document.getElementById('showNumbers');
+    const clockFace = document.getElementById('clockFace');
+    const themeBtn = document.getElementById('themeBtn');
+    const alarmTimeInput = document.getElementById('alarmTime');
+    const setAlarmBtn = document.getElementById('setAlarmBtn');
+    const clearAlarmBtn = document.getElementById('clearAlarmBtn');
+    const alarmStatus = document.getElementById('alarmStatus');
+
+    // state
+    let alarm = null; // string "HH:MM"
+    let audioCtx = null;
+    let alarmPlaying = false;
+
+    // Helper: get time for timezone (using Intl.DateTimeFormat with timeZone)
+    function getTimePartsForZone(zone) {
+      const now = new Date();
+      if (zone === 'local') {
+        return {
+          date: new Date(now.getTime()),
+          hours: now.getHours(),
+          minutes: now.getMinutes(),
+          seconds: now.getSeconds(),
+          milliseconds: now.getMilliseconds()
+        };
+      }
+      // Build a string localized to the zone, then parse components
+      const opts = { timeZone: zone, hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' };
+      const parts = new Intl.DateTimeFormat('en-GB', opts).formatToParts(now);
+      let h = 0, m = 0, s = 0;
+      for (const p of parts) {
+        if (p.type === 'hour') h = parseInt(p.value, 10);
+        if (p.type === 'minute') m = parseInt(p.value, 10);
+        if (p.type === 'second') s = parseInt(p.value, 10);
+      }
+      // For milliseconds, use the local milliseconds — close enough for smooth motion.
+      return { date: now, hours: h, minutes: m, seconds: s, milliseconds: now.getMilliseconds() };
+    }
+
+    // Build ticks and numbers
+    function buildFace() {
+      // clear existing ticks/numbers
+      [...clockFace.querySelectorAll('.tick, .number')].forEach(n => n.remove());
+
+      // 60 ticks
+      for (let i = 0; i < 60; i++) {
+        const t = document.createElement('div');
+        t.className = 'tick' + (i % 5 === 0 ? ' hour' : '');
+        const angle = i * 6; // 360/60
+        t.style.transform = `rotate(${angle}deg) translateY(-120px)`; // tuned for size
+        clockFace.appendChild(t);
+      }
+
+      // numbers 1..12
+      for (let n = 1; n <= 12; n++) {
+        const el = document.createElement('div');
+        el.className = 'number';
+        el.textContent = n;
+        const angle = (n / 12) * Math.PI * 2 - Math.PI / 2;
+        const radius = clockFace.clientWidth / 2 - 40;
+        const cx = clockFace.clientWidth / 2 + Math.cos(angle) * radius;
+        const cy = clockFace.clientHeight / 2 + Math.sin(angle) * radius;
+        el.style.left = cx + 'px';
+        el.style.top = cy + 'px';
+        clockFace.appendChild(el);
+      }
+    }
+
+    // Theme toggle
+    function toggleTheme() {
+      const root = document.documentElement;
+      const current = root.getAttribute('data-theme');
+      if (current === 'dark') {
+        root.removeAttribute('data-theme');
+        themeBtn.textContent = 'Toggle Dark';
+        localStorage.removeItem('clockTheme');
+      } else {
+        root.setAttribute('data-theme', 'dark');
+        themeBtn.textContent = 'Toggle Light';
+        localStorage.setItem('clockTheme', 'dark');
+      }
+    }
+
+    // Alarm beep using Web Audio API
+    function beep(duration = 1500, freq = 880, type = 'sine') {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = type;
+      o.frequency.value = freq;
+      g.gain.value = 0.0001;
+      o.connect(g);
+      g.connect(audioCtx.destination);
+      o.start();
+      // ramp up and down to avoid clicks
+      g.gain.exponentialRampToValueAtTime(0.3, audioCtx.currentTime + 0.02);
+      setTimeout(() => {
+        g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.5);
+        setTimeout(() => o.stop(), 600);
+      }, duration);
+    }
+
+    // Check alarm each second (compares HH:MM)
+    function checkAlarm(parts) {
+      if (!alarm || alarmPlaying) return;
+      let hh = parts.hours.toString().padStart(2, '0');
+      let mm = parts.minutes.toString().padStart(2, '0');
+      if (`${hh}:${mm}` === alarm) {
+        alarmPlaying = true;
+        alarmStatus.textContent = `⏰ Alarm ringing (${alarm})`;
+        // beep a few times
+        let count = 0;
+        const iv = setInterval(() => {
+          beep(400, 880 - count * 60, 'sine');
+          count++;
+          if (count >= 6) {
+            clearInterval(iv);
+            alarmPlaying = false;
+            alarmStatus.textContent = `Alarm set: ${alarm}`;
+          }
+        }, 500);
+      }
+    }
+
+    // Main animation loop (smooth)
+    function frame() {
+      const zone = tzSelect.value;
+      const parts = getTimePartsForZone(zone);
+
+      // precise seconds as fraction
+      const secTotal = parts.seconds + parts.milliseconds / 1000;
+      const minTotal = parts.minutes + secTotal / 60;
+      const hour12 = parts.hours % 12 + minTotal / 60;
+
+      const hourAngle = hour12 * 30; // 360/12
+      const minuteAngle = minTotal * 6; // 360/60
+      const secondAngle = secTotal * 6; // 360/60
+
+      hourHand.style.transform = `translate(-50%,-100%) rotate(${hourAngle}deg)`;
+      minuteHand.style.transform = `translate(-50%,-100%) rotate(${minuteAngle}deg)`;
+      secondHand.style.transform = `translate(-50%,-100%) rotate(${secondAngle}deg)`;
+
+      // digital
+      const HH = parts.hours.toString().padStart(2,'0');
+      const MM = parts.minutes.toString().padStart(2,'0');
+      const SS = parts.seconds.toString().padStart(2,'0');
+      digital.textContent = `${HH}:${MM}:${SS}`;
+
+      // timezone label
+      tzLabel.textContent = `Timezone: ${zone === 'local' ? 'Local' : zone}`;
+
+      // alarm check (only minute precision)
+      checkAlarm(parts);
+
+      requestAnimationFrame(frame);
+    }
+
+    // Save/Load preferences
+    function savePrefs(){
+      localStorage.setItem('clock_tz', tzSelect.value);
+      localStorage.setItem('clock_showNumbers', showNumbersChk.checked ? '1' : '0');
+      localStorage.setItem('clock_theme', document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
+      if (alarm) localStorage.setItem('clock_alarm', alarm);
+      else localStorage.removeItem('clock_alarm');
+    }
+    function loadPrefs(){
+      const tz = localStorage.getItem('clock_tz');
+      if (tz) tzSelect.value = tz;
+      const sn = localStorage.getItem('clock_showNumbers');
+      if (sn === '0') showNumbersChk.checked = false;
+      const theme = localStorage.getItem('clock_theme');
+      if (theme === 'dark') document.documentElement.setAttribute('data-theme','dark');
+      const a = localStorage.getItem('clock_alarm');
+      if (a) {
+        alarm = a;
+        alarmTimeInput.value = a;
+        alarmStatus.textContent = `Alarm set: ${alarm}`;
+      }
+    }
+
+    // UI handlers
+    tzSelect.addEventListener('change', () => { savePrefs(); });
+    showNumbersChk.addEventListener('change', () => {
+      const numbers = clockFace.querySelectorAll('.number');
+      numbers.forEach(n => n.style.display = showNumbersChk.checked ? 'block' : 'none');
+      savePrefs();
+    });
+    themeBtn.addEventListener('click', () => {
+      toggleTheme();
+      savePrefs();
+    });
+
+    setAlarmBtn.addEventListener('click', () => {
+      const v = alarmTimeInput.value;
+      if (!v) return alert('Pick a time (HH:MM) for the alarm');
+      alarm = v.slice(0,5);
+      alarmStatus.textContent = `Alarm set: ${alarm}`;
+      savePrefs();
+    });
+    clearAlarmBtn.addEventListener('click', () => {
+      alarm = null;
+      alarmTimeInput.value = '';
+      alarmStatus.textContent = 'No alarm';
+      savePrefs();
+    });
+
+    // init
+    buildFace();
+    loadPrefs();
+
+    // showNumbers initial state
+    showNumbersChk.dispatchEvent(new Event('change'));
+
+    // start animation
+    requestAnimationFrame(frame);
+
+    // rebuild face on resize (to reposition numbers)
+    window.addEventListener('resize', () => {
+      buildFace();
+      showNumbersChk.dispatchEvent(new Event('change'));
+    });
+
+    // save prefs periodically (and on unload)
+    setInterval(savePrefs, 2000);
+    window.addEventListener('beforeunload', savePrefs);
+  </script>
+</body>
+</html>
